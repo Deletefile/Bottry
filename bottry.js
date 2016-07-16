@@ -1,5 +1,6 @@
 var bottry = function(server, port, chan){
 	const net = require('net');
+	const fs = require('fs');
 
 	var self = this;
 	
@@ -9,10 +10,25 @@ var bottry = function(server, port, chan){
 		chan: chan
 	}
 
+	this.loadCommands = function(){
+		var content = fs.readFileSync(self.config.cmdFile);
+		self.config.commands = JSON.parse(content);
+	};
+
+	this.config = {
+		cmdFile: 'commands.json',
+		
+		commands: {}
+	};
+
+	
+
 	this.client = net.createConnection({port: self.connection.port, host: self.connection.server}, function(){
 	  	
 	  	console.log('Connection successful!');
-	  	
+
+	  	self.loadCommands();
+
 	  	self.client.write('NICK bottry\r\n');	  	
 	  	self.client.write('USER bottry 0 * :bottry\r\n');
 	  	self.client.write('JOIN ' + self.connection.chan + '\r\n');
@@ -26,7 +42,7 @@ var bottry = function(server, port, chan){
 			if(data.toString().match(/^PING(\s):(.*)/)){
 				self.pong();
 			}else{
-				self.parseLine(data);
+				self.parseLine(data, self.parseMessage);
 			}
 
 		});
@@ -66,6 +82,53 @@ var bottry = function(server, port, chan){
 			return parsed;
 		}
 	}
+
+	this.parseMessage = function(query){
+		var command = '';
+		var args = [];
+		console.log(query);
+		if(query.message){
+			if(query.message.indexOf('!') == 0){
+				var argsNum = (query.message.split(' ')).length - 1;
+				for(var i = 0; i <= argsNum; i++){
+					var separator = query.message.indexOf(' ');
+					if(i == 0){
+						command = query.message.substr(0, separator);
+						query.message =  query.message.substr((separator + 1), (query.message.length - separator - 1));
+					}else if(i == argsNum){
+						args.push(query.message.substr(0, query.message.length));
+					}else{
+						var separator = query.message.indexOf(' ');
+						args.push(query.message.substr(0, separator));
+						query.message =  query.message.substr((separator + 1), (query.message.length - separator - 1));
+					}
+				}
+				
+			}
+		}
+
+		self.parseCommand(command, args);
+	}
+
+	this.parseCommand = function(command, args, callback){
+		command = command.substr(1);
+		for(var prop in self.config.commands){
+			if(prop == command){
+				var value = self.config.commands[prop];
+				var parsedCmd = '';
+				value.split('$').forEach(function(val, index){
+					if(index <= (args.length - 1)){
+						parsedCmd += val + args[index];
+					}
+				});
+			}
+		}
+		self.sendCommand(parsedCmd);
+	};
+
+	this.sendCommand = function(cmd){
+		self.client.write(cmd + "\r\n");
+	};
 
 }
 

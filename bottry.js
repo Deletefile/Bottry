@@ -64,7 +64,7 @@ var bottry = function(server, port, chan){
 		var match = line.match(regex);
 
 		for(var propName in match) {
-		    propValue = match[propName]
+		    propValue = match[propName];
 		    console.log(propValue);
 
 		    result.push(propValue);
@@ -89,21 +89,18 @@ var bottry = function(server, port, chan){
 		console.log(query);
 		if(query.message){
 			if(query.message.indexOf('!') == 0){
-				var argsNum = (query.message.split(' ')).length - 1;
-				for(var i = 0; i <= argsNum; i++){
-					var separator = query.message.indexOf(' ');
-					if(i == 0){
-						command = query.message.substr(0, separator);
-						query.message =  query.message.substr((separator + 1), (query.message.length - separator - 1));
-					}else if(i == argsNum){
-						args.push(query.message.substr(0, query.message.length));
-					}else{
-						var separator = query.message.indexOf(' ');
-						args.push(query.message.substr(0, separator));
-						query.message =  query.message.substr((separator + 1), (query.message.length - separator - 1));
-					}
-				}
+				var lineobj = query.message.match(/(?:!)(\w*\d*)+(\s(.*)+(\s".*")?)+/);
+				var serialized = [];
 				
+				for(var property in lineobj){
+					serialized.push(lineobj[property]);
+				}
+
+				var command = serialized[1];
+				var args = serialized[3].split('"');
+				args.map(function(argument){
+					return argument.trim();
+				});
 			}
 		}
 
@@ -111,7 +108,6 @@ var bottry = function(server, port, chan){
 	}
 
 	this.parseCommand = function(command, args, callback){
-		command = command.substr(1);
 		for(var prop in self.config.commands){
 			if(prop == command){
 				var value = self.config.commands[prop];
@@ -127,6 +123,7 @@ var bottry = function(server, port, chan){
 	};
 
 	this.sendCommand = function(cmd){
+		console.log(cmd);
 		self.client.write(cmd + "\r\n");
 	};
 
